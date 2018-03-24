@@ -1,11 +1,46 @@
 {
   "name": "app-opmaster",
   "version": "0.2.0",
-  "description": "Devebot opflow master layerware",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Devebot mapping opflow-master plugin",
+  "homepage": "https://github.com/apporo/app-opmaster.git",
+  "author": {
+    "name": "apporo",
+    "email": "apporo@devebot.com",
+    "url": "https://github.com/apporo"
   },
-  "author": "devebot",
-  "license": "MIT"
+  "main": "index.js",
+  "directories": {
+    "lib": "lib/"
+  },
+  "files": [
+    "bin/",
+    "config/",
+    "data/",
+    "lib/"
+  ],
+  "scripts": {
+    "build": "babel ./src -d ./lib",
+    "clean": "rm -rf ./lib",
+    "prepublish": "NODE_ENV=production npm run build",
+    "pretest": "NODE_ENV=test npm run build",
+    "test": "cucumber-js ./test/**/*.feature",
+    "verify": "npm run prepublish && cucumber-js ./test/**/*.feature"
+  },
+  "keywords": [
+    "devebot",
+    "devebot-plugin"
+  ],
+  "peerDependencies": {
+    "devebot": "^0.2.6"
+  },
+  "dependencies": {
+    "devebot": "^0.2.6",
+    "opflow": "^0.1.8"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-plugin-minify-mangle-names": "^0.3.0",
+    "babel-preset-env": "^1.6.1",
+    "cucumber": "^4.0.0"
+  }
 }
