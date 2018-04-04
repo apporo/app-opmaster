@@ -20,11 +20,17 @@ var Service = function(params) {
   var pluginCfg = lodash.get(params, ['sandboxConfig'], {});
 
   var _rpcMasters = {};
-  lodash.forOwn(pluginCfg.rpcMasters, function(rpcInfo, rpcName) {
-    if (lodash.isObject(rpcInfo) && !lodash.isEmpty(rpcInfo) && rpcInfo.enabled != false) {
-      _rpcMasters[rpcName] = new opflow.RpcMaster(rpcInfo);
-    }
-  });
+
+  var init = function() {
+    if (pluginCfg.enabled === false) return;
+    lodash.forOwn(pluginCfg.rpcMasters, function(rpcInfo, rpcName) {
+      if (lodash.isObject(rpcInfo) && !lodash.isEmpty(rpcInfo) && rpcInfo.enabled != false) {
+        _rpcMasters[rpcName] = new opflow.RpcMaster(rpcInfo);
+      }
+    });
+  }
+
+  init();
 
   self.get = function(rpcName) {
     return _rpcMasters[rpcName];

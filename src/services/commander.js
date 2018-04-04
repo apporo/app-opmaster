@@ -25,14 +25,22 @@ var Service = function(params) {
     return services[serviceName];
   }
 
+  var init = function() {
+    if (pluginCfg.enabled === false) return;
+    lodash.forOwn(mappings, function(serviceDescriptor, serviceName) {
+      createService(services, serviceName, serviceDescriptor);
+    });
+  }
+
   var createService = function(storage, serviceName, descriptor) {
     storage = storage || {};
-
     storage[serviceName] = storage[serviceName] || {};
-    lodash.forOwn(descriptor, function(methodDescriptor, methodName) {
-      registerMethod(storage[serviceName], methodName, methodDescriptor);
-    });
-
+    if (descriptor.enabled !== false) {
+      var methods = descriptor.methods || {};
+      lodash.forOwn(methods, function(methodDescriptor, methodName) {
+        registerMethod(storage[serviceName], methodName, methodDescriptor);
+      });
+    }
     return storage;
   }
 
@@ -41,6 +49,8 @@ var Service = function(params) {
 
     // TODO: validate descriptor here
     descriptor = descriptor || {};
+
+    if (descriptor.enabled === false) return target;
 
     var routineId = descriptor.routineId || methodName;
     Object.defineProperty(target, methodName, {
@@ -95,9 +105,7 @@ var Service = function(params) {
     return Promise.reject();
   }
 
-  lodash.forOwn(mappings, function(serviceDescriptor, serviceName) {
-    createService(services, serviceName, serviceDescriptor);
-  });
+  init();
 
   LX.has('silly') && LX.log('silly', LT.toMessage({
     tags: [ 'constructor-end' ],
