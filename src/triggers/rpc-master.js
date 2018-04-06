@@ -25,9 +25,25 @@ var Service = function(params) {
   var _rpcMasters = {};
 
   var init = function() {
+    LX.has('debug') && LX.log('debug', LT.add({
+      enabled: pluginCfg.enabled,
+      rpcNames: lodash.keys(pluginCfg.rpcMasters)
+    }).toMessage({
+      tags: [ blockRef, 'init-rpcMasters' ],
+      text: ' - Initialize RPC Masters: ${rpcNames}, enabled: ${enabled}'
+    }));
     if (pluginCfg.enabled === false) return;
     lodash.forOwn(pluginCfg.rpcMasters, function(rpcInfo, rpcName) {
-      if (lodash.isObject(rpcInfo) && !lodash.isEmpty(rpcInfo) && rpcInfo.enabled != false) {
+      var rpcEnabled = rpcInfo && lodash.isObject(rpcInfo) && rpcInfo.enabled !== false;
+      LX.has('debug') && LX.log('debug', LT.add({
+        enabled: rpcEnabled,
+        rpcName: rpcName,
+        rpcInfo: rpcInfo
+      }).toMessage({
+        tags: [ blockRef, 'init-rpcMaster' ],
+        text: ' - Initialize RPC Master: ${rpcName} with parameters: ${rpcInfo}'
+      }));
+      if (rpcEnabled) {
         _rpcMasters[rpcName] = new opflow.RpcMaster(rpcInfo);
       }
     });

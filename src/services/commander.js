@@ -4,7 +4,6 @@ var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var chores = Devebot.require('chores');
 var lodash = Devebot.require('lodash');
-var logolite = Devebot.require('logolite');
 
 var Service = function(params) {
   params = params || {};
@@ -29,17 +28,30 @@ var Service = function(params) {
   }
 
   var init = function() {
+    LX.has('debug') && LX.log('debug', LT.add({
+      enabled: pluginCfg.enabled
+    }).toMessage({
+      tags: [ blockRef, 'init-mappings' ],
+      text: ' - Initialize the mappings, enabled: ${enabled}'
+    }));
     if (pluginCfg.enabled === false) return;
     lodash.forOwn(mappings, function(serviceDescriptor, serviceName) {
       createService(services, serviceName, serviceDescriptor);
     });
   }
 
-  var createService = function(storage, serviceName, descriptor) {
+  var createService = function(storage, serviceName, serviceDescriptor) {
     storage = storage || {};
     storage[serviceName] = storage[serviceName] || {};
-    if (descriptor.enabled !== false) {
-      var methods = descriptor.methods || {};
+    LX.has('debug') && LX.log('debug', LT.add({
+      enabled: serviceDescriptor.enabled,
+      name: serviceName
+    }).toMessage({
+      tags: [ blockRef, 'register-service' ],
+      text: ' - Initialize the service[${name}], enabled: ${enabled}'
+    }));
+    if (serviceDescriptor.enabled !== false) {
+      var methods = serviceDescriptor.methods || {};
       lodash.forOwn(methods, function(methodDescriptor, methodName) {
         registerMethod(storage[serviceName], methodName, methodDescriptor);
       });
@@ -47,15 +59,23 @@ var Service = function(params) {
     return storage;
   }
 
-  var registerMethod = function(target, methodName, descriptor) {
+  var registerMethod = function(target, methodName, methodDescriptor) {
     target = target || {};
 
     // TODO: validate descriptor here
-    descriptor = descriptor || {};
+    methodDescriptor = methodDescriptor || {};
 
-    if (descriptor.enabled === false) return target;
+    LX.has('debug') && LX.log('debug', LT.add({
+      enabled: methodDescriptor.enabled,
+      name: methodName
+    }).toMessage({
+      tags: [ blockRef, 'register-method' ],
+      text: ' - Initialize the method[${name}], enabled: ${enabled}'
+    }));
 
-    var routineId = descriptor.routineId || methodName;
+    if (methodDescriptor.enabled === false) return target;
+
+    var routineId = methodDescriptor.routineId || methodName;
     Object.defineProperty(target, methodName, {
       get: function() {
         return function(methodArgs, options) {
@@ -70,7 +90,7 @@ var Service = function(params) {
           }).toMessage({
             text: 'method parameters: ${args}'
           }));
-          return assertRpcMaster(descriptor.rpcName).then(function(handler) {
+          return assertRpcMaster(methodDescriptor.rpcName).then(function(handler) {
             return handler.request(routineId, methodArgs, {
               requestId: requestId,
               progressEnabled: false
