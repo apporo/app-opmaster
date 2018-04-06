@@ -2,6 +2,7 @@
 
 var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
+var chores = Devebot.require('chores');
 var lodash = Devebot.require('lodash');
 var logolite = Devebot.require('logolite');
 
@@ -11,9 +12,11 @@ var Service = function(params) {
 
   var LX = params.loggingFactory.getLogger();
   var LT = params.loggingFactory.getTracer();
+  var packageName = params.packageName || 'app-opmaster';
+  var blockRef = chores.getBlockRef(__filename, packageName);
 
   LX.has('silly') && LX.log('silly', LT.toMessage({
-    tags: [ 'constructor-begin' ],
+    tags: [ blockRef, 'constructor-begin' ],
     text: ' + constructor begin ...'
   }));
 
@@ -108,7 +111,7 @@ var Service = function(params) {
   init();
 
   LX.has('silly') && LX.log('silly', LT.toMessage({
-    tags: [ 'constructor-end' ],
+    tags: [ blockRef, 'constructor-end' ],
     text: ' - constructor end!'
   }));
 };
