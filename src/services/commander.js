@@ -59,36 +59,52 @@ var Service = function(params) {
     return storage;
   }
 
+  var parseMethodArgs = function(args) {
+    var opts = {};
+    if (args.length > 0) {
+      opts = args[args.length - 1];
+      if (opts && lodash.isObject(opts) && opts.requestId && opts.opflowSeal) {
+        args = Array.prototype.slice.call(args, 0, args.length - 1);
+      } else {
+        args = Array.prototype.slice.call(args);
+        opts = {};
+      }
+    }
+    return { methodArgs: args, options: opts }
+  }
+
   var registerMethod = function(target, methodName, methodDescriptor) {
     target = target || {};
 
     // TODO: validate descriptor here
     methodDescriptor = methodDescriptor || {};
 
-    LX.has('debug') && LX.log('debug', LT.add({
+    var routineId = methodDescriptor.routineId || methodName;
+    var routineTr = LT.branch({ key:'routineId', value:routineId });
+
+    LX.has('debug') && LX.log('debug', routineTr.add({
       enabled: methodDescriptor.enabled,
       name: methodName
     }).toMessage({
       tags: [ blockRef, 'register-method' ],
-      text: ' - Initialize the method[${name}], enabled: ${enabled}'
+      text: ' - Initialize method[${name}] ~ routine[${routineId}], enabled: ${enabled}'
     }));
 
     if (methodDescriptor.enabled === false) return target;
 
-    var routineId = methodDescriptor.routineId || methodName;
     Object.defineProperty(target, methodName, {
       get: function() {
-        return function(methodArgs, options) {
-          options = options || {};
+        return function() {
+          let { methodArgs, options } = parseMethodArgs(arguments);
           var requestId = options.requestId || LT.getLogID();
-          var requestTrail = LT.branch({ key:'requestId', value:requestId });
-          LX.has('info') && LX.log('info', requestTrail.toMessage({
-            text: 'send a new request'
-          }));
-          LX.has('debug') && LX.log('debug', requestTrail.add({
-            args: methodArgs
+          var requestTrail = routineTr.branch({ key:'requestId', value:requestId });
+          LX.has('info') && LX.log('info', requestTrail.add({
+            routineId: routineId,
+            methodArgs: methodArgs,
+            options: options
           }).toMessage({
-            text: 'method parameters: ${args}'
+            tags: [ blockRef, 'dispatch-message' ],
+            text: 'Routine[${routineId}] arguments: ${methodArgs}, options: ${options}'
           }));
           return assertRpcMaster(methodDescriptor.rpcName).then(function(handler) {
             return handler.request(routineId, methodArgs, {
@@ -104,6 +120,7 @@ var Service = function(params) {
                 status: result.status,
                 data: result.data
               }).toMessage({
+                tags: [ blockRef, 'receive-result' ],
                 text: 'request has finished with status: ${status}'
               }));
               if (result.timeout) return Promise.reject({
