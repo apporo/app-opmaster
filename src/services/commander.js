@@ -115,20 +115,28 @@ var Service = function(params) {
             LX.has('info') && LX.log('info', requestTrail.toMessage({
               text: 'request has been sent, waiting for result'
             }));
-            return task.extractResult().then(function(result) {
-              LX.has('info') && LX.log('info', requestTrail.add({
-                status: result.status,
-                data: result.data
-              }).toMessage({
-                tags: [ blockRef, 'receive-result' ],
-                text: 'request has finished with status: ${status}'
-              }));
-              if (result.timeout) return Promise.reject({
-                code: 'RPC_TIMEOUT',
-                text: 'RPC request is timeout'
-              });
-              if (result.failed) return Promise.reject(result.error);
-              if (result.completed) return Promise.resolve(result.value);
+            return task.extractResult();
+          }).then(function(result) {
+            LX.has('info') && LX.log('info', requestTrail.add({
+              status: result.status,
+              data: result.data
+            }).toMessage({
+              tags: [ blockRef, 'receive-result' ],
+              text: 'request has finished with status: ${status}'
+            }));
+            if (result.completed) return Promise.resolve(result.value);
+            if (result.failed) return Promise.reject({
+              code: 'RPC_FAILED',
+              text: 'RPC request has failed',
+              error: result.error
+            });
+            if (result.timeout) return Promise.reject({
+              code: 'RPC_TIMEOUT',
+              text: 'RPC request is timeout'
+            });
+            return Promise.reject({
+              code: 'RPC_UNKNOWN',
+              text: 'RPC request return unknown output'
             });
           });
         }
