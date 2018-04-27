@@ -30,7 +30,7 @@ var Service = function(params) {
 
   var init = function() {
     LX.has('debug') && LX.log('debug', LT.add({
-      enabled: pluginCfg.enabled
+      enabled: pluginCfg.enabled !== false
     }).toMessage({
       tags: [ blockRef, 'init-mappings' ],
       text: ' - Initialize the mappings, enabled: ${enabled}'
@@ -45,7 +45,7 @@ var Service = function(params) {
     storage = storage || {};
     storage[serviceName] = storage[serviceName] || {};
     LX.has('debug') && LX.log('debug', LT.add({
-      enabled: serviceDescriptor.enabled,
+      enabled: serviceDescriptor.enabled !== false,
       name: serviceName
     }).toMessage({
       tags: [ blockRef, 'register-service' ],
@@ -84,7 +84,7 @@ var Service = function(params) {
     var routineTr = LT.branch({ key:'routineId', value:routineId });
 
     LX.has('debug') && LX.log('debug', routineTr.add({
-      enabled: methodDescriptor.enabled,
+      enabled: methodDescriptor.enabled !== false,
       name: methodName
     }).toMessage({
       tags: [ blockRef, 'register-method' ],
@@ -97,16 +97,17 @@ var Service = function(params) {
       get: function() {
         return function() {
           let { methodArgs, options } = parseMethodArgs(arguments);
-          return obtainTicket().then(function() {
+          return getTicket().then(function(ticketId) {
             let requestId = options.requestId || LT.getLogID();
             let requestTrail = routineTr.branch({ key:'requestId', value:requestId });
             LX.has('info') && LX.log('info', requestTrail.add({
+              ticketId: ticketId,
               routineId: routineId,
               methodArgs: methodArgs,
               options: options
             }).toMessage({
               tags: [ blockRef, 'dispatch-message' ],
-              text: 'Routine[${routineId}] arguments: ${methodArgs}, options: ${options}'
+              text: '[${ticketId}] Routine[${routineId}] arguments: ${methodArgs}, options: ${options}'
             }));
             return assertRpcMaster(methodDescriptor.rpcName).then(function(handler) {
               return handler.request(routineId, methodArgs, {
@@ -114,17 +115,20 @@ var Service = function(params) {
                 progressEnabled: false
               });
             }).then(function(task) {
-              LX.has('info') && LX.log('info', requestTrail.toMessage({
-                text: 'request has been sent, waiting for result'
+              LX.has('info') && LX.log('info', requestTrail.add({
+                ticketId: ticketId
+              }).toMessage({
+                text: '[${ticketId}] request has been sent, waiting for result'
               }));
               return task.extractResult();
             }).then(function(result) {
               LX.has('info') && LX.log('info', requestTrail.add({
+                ticketId: ticketId,
                 status: result.status,
                 data: result.data
               }).toMessage({
                 tags: [ blockRef, 'receive-result' ],
-                text: 'request has finished with status: ${status}'
+                text: '[${ticketId}] request has finished with status: ${status}'
               }));
               if (result.completed) return Promise.resolve(result.value);
               if (result.failed) return Promise.reject({
@@ -140,6 +144,8 @@ var Service = function(params) {
                 code: 'RPC_UNKNOWN',
                 text: 'RPC request return unknown output'
               });
+            }).finally(function() {
+              releaseTicket(ticketId);
             });
           });
         }
@@ -149,23 +155,47 @@ var Service = function(params) {
     return target;
   }
 
-  var ticketQuota = null;
+  var throughputValve = null;
   if (lodash.isInteger(pluginCfg.throughputQuota) && pluginCfg.throughputQuota > 0) {
-    ticketQuota = locks.createSemaphore(pluginCfg.throughputQuota);
+    LX.has('debug') && LX.log('debug', LT.add({
+      throughputQuota: pluginCfg.throughputQuota
+    }).toMessage({
+      tags: [ blockRef, 'quota-ticket' ],
+      text: ' - Create throughput valve: ${throughputQuota}'
+    }));
+    throughputValve = locks.createSemaphore(pluginCfg.throughputQuota);
   }
-  var obtainTicket = function() {
-    if (ticketQuota) {
-      var ticket = new Promise(function(onResolved, onRejected) {
-        ticketQuota.wait(function whenResourceAvailable() {
-          onResolved();
+
+  let getTicket = function() {
+    var ticketId = LT.getLogID();
+    var ticket;
+    if (throughputValve) {
+      ticket = new Promise(function(onResolved, onRejected) {
+        throughputValve.wait(function whenResourceAvailable() {
+          LX.has('debug') && LX.log('debug', LT.add({
+            ticketId: ticketId
+          }).toMessage({
+            tags: [ blockRef, 'lock-valve' ],
+            text: ' - Lock throughput ticket[${ticketId}]'
+          }));
+          onResolved(ticketId);
         });
       });
-      ticket.finally(function() {
-        ticketQuota.signal();
-      });
-      return ticket;
     } else {
-      return Promise.resolve();
+      ticket = Promise.resolve(ticketId);
+    }
+    return ticket;
+  }
+
+  let releaseTicket = function(ticketId) {
+    if (throughputValve) {
+      LX.has('debug') && LX.log('debug', LT.add({
+        ticketId: ticketId
+      }).toMessage({
+        tags: [ blockRef, 'unlock-valve' ],
+        text: ' - Unlock throughput ticket[${ticketId}]'
+      }));
+      throughputValve.signal();
     }
   }
 
