@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "devebot": "^0.2.6",
+    "locks": "^0.2.2",
     "opflow": "^0.1.8"
   },
   "devDependencies": {

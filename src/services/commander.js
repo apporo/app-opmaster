@@ -4,6 +4,7 @@ var Devebot = require('devebot');
 var Promise = Devebot.require('bluebird');
 var chores = Devebot.require('chores');
 var lodash = Devebot.require('lodash');
+var locks = require('locks');
 
 var Service = function(params) {
   params = params || {};
@@ -96,47 +97,49 @@ var Service = function(params) {
       get: function() {
         return function() {
           let { methodArgs, options } = parseMethodArgs(arguments);
-          var requestId = options.requestId || LT.getLogID();
-          var requestTrail = routineTr.branch({ key:'requestId', value:requestId });
-          LX.has('info') && LX.log('info', requestTrail.add({
-            routineId: routineId,
-            methodArgs: methodArgs,
-            options: options
-          }).toMessage({
-            tags: [ blockRef, 'dispatch-message' ],
-            text: 'Routine[${routineId}] arguments: ${methodArgs}, options: ${options}'
-          }));
-          return assertRpcMaster(methodDescriptor.rpcName).then(function(handler) {
-            return handler.request(routineId, methodArgs, {
-              requestId: requestId,
-              progressEnabled: false
-            });
-          }).then(function(task) {
-            LX.has('info') && LX.log('info', requestTrail.toMessage({
-              text: 'request has been sent, waiting for result'
-            }));
-            return task.extractResult();
-          }).then(function(result) {
+          return obtainTicket().then(function() {
+            let requestId = options.requestId || LT.getLogID();
+            let requestTrail = routineTr.branch({ key:'requestId', value:requestId });
             LX.has('info') && LX.log('info', requestTrail.add({
-              status: result.status,
-              data: result.data
+              routineId: routineId,
+              methodArgs: methodArgs,
+              options: options
             }).toMessage({
-              tags: [ blockRef, 'receive-result' ],
-              text: 'request has finished with status: ${status}'
+              tags: [ blockRef, 'dispatch-message' ],
+              text: 'Routine[${routineId}] arguments: ${methodArgs}, options: ${options}'
             }));
-            if (result.completed) return Promise.resolve(result.value);
-            if (result.failed) return Promise.reject({
-              code: 'RPC_FAILED',
-              text: 'RPC request has failed',
-              error: result.error
-            });
-            if (result.timeout) return Promise.reject({
-              code: 'RPC_TIMEOUT',
-              text: 'RPC request is timeout'
-            });
-            return Promise.reject({
-              code: 'RPC_UNKNOWN',
-              text: 'RPC request return unknown output'
+            return assertRpcMaster(methodDescriptor.rpcName).then(function(handler) {
+              return handler.request(routineId, methodArgs, {
+                requestId: requestId,
+                progressEnabled: false
+              });
+            }).then(function(task) {
+              LX.has('info') && LX.log('info', requestTrail.toMessage({
+                text: 'request has been sent, waiting for result'
+              }));
+              return task.extractResult();
+            }).then(function(result) {
+              LX.has('info') && LX.log('info', requestTrail.add({
+                status: result.status,
+                data: result.data
+              }).toMessage({
+                tags: [ blockRef, 'receive-result' ],
+                text: 'request has finished with status: ${status}'
+              }));
+              if (result.completed) return Promise.resolve(result.value);
+              if (result.failed) return Promise.reject({
+                code: 'RPC_FAILED',
+                text: 'RPC request has failed',
+                error: result.error
+              });
+              if (result.timeout) return Promise.reject({
+                code: 'RPC_TIMEOUT',
+                text: 'RPC request is timeout'
+              });
+              return Promise.reject({
+                code: 'RPC_UNKNOWN',
+                text: 'RPC request return unknown output'
+              });
             });
           });
         }
@@ -144,6 +147,26 @@ var Service = function(params) {
       set: function(val) {}
     });
     return target;
+  }
+
+  var ticketQuota = null;
+  if (lodash.isInteger(pluginCfg.throughputQuota) && pluginCfg.throughputQuota > 0) {
+    ticketQuota = locks.createSemaphore(pluginCfg.throughputQuota);
+  }
+  var obtainTicket = function() {
+    if (ticketQuota) {
+      var ticket = new Promise(function(onResolved, onRejected) {
+        ticketQuota.wait(function whenResourceAvailable() {
+          onResolved();
+        });
+      });
+      ticket.finally(function() {
+        ticketQuota.signal();
+      });
+      return ticket;
+    } else {
+      return Promise.resolve();
+    }
   }
 
   var rpcMasterStore = params.rpcMaster;
