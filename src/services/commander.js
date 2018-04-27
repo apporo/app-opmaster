@@ -1,34 +1,34 @@
 'use strict';
 
-var Devebot = require('devebot');
-var Promise = Devebot.require('bluebird');
-var chores = Devebot.require('chores');
-var lodash = Devebot.require('lodash');
-var locks = require('locks');
+const Devebot = require('devebot');
+const Promise = Devebot.require('bluebird');
+const chores = Devebot.require('chores');
+const lodash = Devebot.require('lodash');
+const locks = require('locks');
 
-var Service = function(params) {
+let Service = function(params) {
   params = params || {};
-  var self = this;
+  let self = this;
 
-  var LX = params.loggingFactory.getLogger();
-  var LT = params.loggingFactory.getTracer();
-  var packageName = params.packageName || 'app-opmaster';
-  var blockRef = chores.getBlockRef(__filename, packageName);
+  let LX = params.loggingFactory.getLogger();
+  let LT = params.loggingFactory.getTracer();
+  let packageName = params.packageName || 'app-opmaster';
+  let blockRef = chores.getBlockRef(__filename, packageName);
 
   LX.has('silly') && LX.log('silly', LT.toMessage({
     tags: [ blockRef, 'constructor-begin' ],
     text: ' + constructor begin ...'
   }));
 
-  var pluginCfg = lodash.get(params, ['sandboxConfig'], {});
-  var mappings = pluginCfg.mappings || {};
-  var services = {};
+  let pluginCfg = lodash.get(params, ['sandboxConfig'], {});
+  let mappings = pluginCfg.mappings || {};
+  let services = {};
 
   self.lookupService = function(serviceName) {
     return services[serviceName];
   }
 
-  var init = function() {
+  let init = function() {
     LX.has('debug') && LX.log('debug', LT.add({
       enabled: pluginCfg.enabled !== false
     }).toMessage({
@@ -41,7 +41,7 @@ var Service = function(params) {
     });
   }
 
-  var createService = function(storage, serviceName, serviceDescriptor) {
+  let createService = function(storage, serviceName, serviceDescriptor) {
     storage = storage || {};
     storage[serviceName] = storage[serviceName] || {};
     LX.has('debug') && LX.log('debug', LT.add({
@@ -52,7 +52,7 @@ var Service = function(params) {
       text: ' - Initialize the service[${name}], enabled: ${enabled}'
     }));
     if (serviceDescriptor.enabled !== false) {
-      var methods = serviceDescriptor.methods || {};
+      let methods = serviceDescriptor.methods || {};
       lodash.forOwn(methods, function(methodDescriptor, methodName) {
         registerMethod(storage[serviceName], methodName, methodDescriptor);
       });
@@ -60,8 +60,8 @@ var Service = function(params) {
     return storage;
   }
 
-  var parseMethodArgs = function(args) {
-    var opts = {};
+  let parseMethodArgs = function(args) {
+    let opts = {};
     if (args.length > 0) {
       opts = args[args.length - 1];
       if (opts && lodash.isObject(opts) && opts.requestId && opts.opflowSeal) {
@@ -74,14 +74,14 @@ var Service = function(params) {
     return { methodArgs: args, options: opts }
   }
 
-  var registerMethod = function(target, methodName, methodDescriptor) {
+  let registerMethod = function(target, methodName, methodDescriptor) {
     target = target || {};
 
     // TODO: validate descriptor here
     methodDescriptor = methodDescriptor || {};
 
-    var routineId = methodDescriptor.routineId || methodName;
-    var routineTr = LT.branch({ key:'routineId', value:routineId });
+    let routineId = methodDescriptor.routineId || methodName;
+    let routineTr = LT.branch({ key:'routineId', value:routineId });
 
     LX.has('debug') && LX.log('debug', routineTr.add({
       enabled: methodDescriptor.enabled !== false,
@@ -155,7 +155,7 @@ var Service = function(params) {
     return target;
   }
 
-  var throughputValve = null;
+  let throughputValve = null;
   if (lodash.isInteger(pluginCfg.throughputQuota) && pluginCfg.throughputQuota > 0) {
     LX.has('debug') && LX.log('debug', LT.add({
       throughputQuota: pluginCfg.throughputQuota
@@ -167,8 +167,8 @@ var Service = function(params) {
   }
 
   let getTicket = function() {
-    var ticketId = LT.getLogID();
-    var ticket;
+    let ticketId = LT.getLogID();
+    let ticket;
     if (throughputValve) {
       ticket = new Promise(function(onResolved, onRejected) {
         throughputValve.wait(function whenResourceAvailable() {
@@ -199,9 +199,9 @@ var Service = function(params) {
     }
   }
 
-  var rpcMasterStore = params.rpcMaster;
-  var assertRpcMaster = function(rpcName) {
-    var rpcMaster = rpcMasterStore.get(rpcName);
+  let rpcMasterStore = params.rpcMaster;
+  let assertRpcMaster = function(rpcName) {
+    let rpcMaster = rpcMasterStore.get(rpcName);
     if (rpcMaster) return Promise.resolve(rpcMaster);
     return Promise.reject();
   }

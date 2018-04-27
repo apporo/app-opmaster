@@ -1,30 +1,30 @@
 'use strict';
 
-var Devebot = require('devebot');
-var Promise = Devebot.require('bluebird');
-var chores = Devebot.require('chores');
-var lodash = Devebot.require('lodash');
-var opflow = require('opflow');
+const Devebot = require('devebot');
+const Promise = Devebot.require('bluebird');
+const chores = Devebot.require('chores');
+const lodash = Devebot.require('lodash');
+const opflow = require('opflow');
 
-var Service = function(params) {
+let Service = function(params) {
   params = params || {};
-  var self = this;
+  let self = this;
 
-  var LX = params.loggingFactory.getLogger();
-  var LT = params.loggingFactory.getTracer();
-  var packageName = params.packageName || 'app-opmaster';
-  var blockRef = chores.getBlockRef(__filename, packageName);
+  let LX = params.loggingFactory.getLogger();
+  let LT = params.loggingFactory.getTracer();
+  let packageName = params.packageName || 'app-opmaster';
+  let blockRef = chores.getBlockRef(__filename, packageName);
 
   LX.has('silly') && LX.log('silly', LT.toMessage({
     tags: [ blockRef, 'constructor-begin' ],
     text: ' + constructor begin ...'
   }));
 
-  var pluginCfg = lodash.get(params, ['sandboxConfig'], {});
+  let pluginCfg = lodash.get(params, ['sandboxConfig'], {});
 
-  var _rpcMasters = {};
+  let _rpcMasters = {};
 
-  var init = function() {
+  let init = function() {
     LX.has('debug') && LX.log('debug', LT.add({
       enabled: pluginCfg.enabled,
       rpcNames: lodash.keys(pluginCfg.rpcMasters)
@@ -34,7 +34,7 @@ var Service = function(params) {
     }));
     if (pluginCfg.enabled === false) return;
     lodash.forOwn(pluginCfg.rpcMasters, function(rpcInfo, rpcName) {
-      var rpcEnabled = rpcInfo && lodash.isObject(rpcInfo) && rpcInfo.enabled !== false;
+      let rpcEnabled = rpcInfo && lodash.isObject(rpcInfo) && rpcInfo.enabled !== false;
       LX.has('debug') && LX.log('debug', LT.add({
         enabled: rpcEnabled,
         rpcName: rpcName,
