@@ -4,7 +4,7 @@ const Devebot = require('devebot');
 const Promise = Devebot.require('bluebird');
 const chores = Devebot.require('chores');
 const lodash = Devebot.require('lodash');
-const locks = require('locks');
+const valvekit = require('valvekit');
 
 let Service = function(params) {
   params = params || {};
@@ -163,7 +163,7 @@ let Service = function(params) {
       tags: [ blockRef, 'quota-ticket' ],
       text: ' - Create throughput valve: ${throughputQuota}'
     }));
-    throughputValve = locks.createSemaphore(pluginCfg.throughputQuota);
+    throughputValve = valvekit.createSemaphore(pluginCfg.throughputQuota);
   }
 
   let getTicket = function() {
@@ -171,12 +171,15 @@ let Service = function(params) {
     let ticket;
     if (throughputValve) {
       ticket = new Promise(function(onResolved, onRejected) {
-        throughputValve.wait(function whenResourceAvailable() {
+        throughputValve.take(function whenResourceAvailable() {
           LX.has('debug') && LX.log('debug', LT.add({
-            ticketId: ticketId
+            ticketId: ticketId,
+            waiting: throughputValve.waiting,
+            available: throughputValve.available,
+            capacity: throughputValve.capacity
           }).toMessage({
             tags: [ blockRef, 'lock-valve' ],
-            text: ' - Lock throughput ticket[${ticketId}]'
+            text: ' - Lock throughput ticket[${ticketId}] - [${waiting}/${available}/${capacity}]'
           }));
           onResolved(ticketId);
         });
@@ -189,13 +192,16 @@ let Service = function(params) {
 
   let releaseTicket = function(ticketId) {
     if (throughputValve) {
+      throughputValve.release();
       LX.has('debug') && LX.log('debug', LT.add({
-        ticketId: ticketId
+        ticketId: ticketId,
+        waiting: throughputValve.waiting,
+        available: throughputValve.available,
+        capacity: throughputValve.capacity
       }).toMessage({
         tags: [ blockRef, 'unlock-valve' ],
-        text: ' - Unlock throughput ticket[${ticketId}]'
+        text: ' - Unlock throughput ticket[${ticketId}] - [${waiting}/${available}/${capacity}]'
       }));
-      throughputValve.signal();
     }
   }
 
