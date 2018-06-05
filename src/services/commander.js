@@ -24,18 +24,22 @@ let Service = function(params) {
   let mappings = pluginCfg.mappings || {};
   let services = {};
 
+  let ticketDeliveryDelay = pluginCfg.ticketDeliveryDelay || null;
+  if (!(lodash.isInteger(ticketDeliveryDelay) && ticketDeliveryDelay > 0)) {
+    ticketDeliveryDelay = null;
+  }
+
   self.lookupService = function(serviceName) {
     return services[serviceName];
   }
 
   let init = function() {
-    LX.has('debug') && LX.log('debug', LT.add({
-      enabled: pluginCfg.enabled !== false
-    }).toMessage({
+    let enabled = pluginCfg.enabled !== false;
+    LX.has('debug') && LX.log('debug', LT.add({ enabled }).toMessage({
       tags: [ blockRef, 'init-mappings' ],
       text: ' - Initialize the mappings, enabled: ${enabled}'
     }));
-    if (pluginCfg.enabled === false) return;
+    if (!enabled) return;
     lodash.forOwn(mappings, function(serviceDescriptor, serviceName) {
       createService(services, serviceName, serviceDescriptor);
     });
@@ -187,7 +191,7 @@ let Service = function(params) {
     } else {
       ticket = Promise.resolve(ticketId);
     }
-    return ticket;
+    return ticketDeliveryDelay ? ticket.delay(ticketDeliveryDelay) : ticket;
   }
 
   let releaseTicket = function(ticketId) {
