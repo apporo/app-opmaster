@@ -3,7 +3,7 @@
 var lodash = require('lodash');
 var opflow = require('opflow');
 var debugx = require('debug')('fibonacci:rpc:worker');
-var Fibonacci = require('./fibonacci');
+var Fibonacci = require('../app/lib/utils/fibonacci');
 
 var FibonacciRpcWorker = function(params, configurer) {
 	var rpcWorker = new opflow.RpcWorker(params);
@@ -20,6 +20,7 @@ var FibonacciRpcWorker = function(params, configurer) {
 			response.emitStarted();
 			
 			body = JSON.parse(body);
+			if (lodash.isArray(body)) body = body[0];
 
 			debugx.enabled && debugx('Request[%s] - numberMax: %s', requestId, self.getNumberMax());
 			if (self.isSettingAvailable() && self.getNumberMax() < body.number) {
@@ -31,15 +32,19 @@ var FibonacciRpcWorker = function(params, configurer) {
 			}
 
 			var fibonacci = new Fibonacci(body);
-			while(fibonacci.next()) {
-				var r = fibonacci.result();
-				debugx.enabled && debugx('Request[%s] step[%s]', requestId, r.step);
-				response.emitProgress(r.step, r.number);
-			};
+			// while(fibonacci.next()) {
+			// 	var r = fibonacci.result();
+			// 	debugx.enabled && debugx('Request[%s] step[%s]', requestId, r.step);
+			// 	response.emitProgress(r.step, r.number);
+			// };
 
-			debugx.enabled && debugx('Request[%s] has been finished: %s', requestId,
-				JSON.stringify(fibonacci.result()));
-			response.emitCompleted(fibonacci.result());
+			// debugx.enabled && debugx('Request[%s] has been finished: %s', requestId,
+			// 	JSON.stringify(fibonacci.result()));
+			
+			var result = fibonacci.finish();
+			result.actionId = body.actionId;
+
+			response.emitCompleted(result);
 		})
 	}
 
@@ -62,11 +67,11 @@ if (require.main === module) {
 	var worker = new FibonacciRpcWorker({
 		uri: process.env.DEVEBOT_OPFLOW_URI ||
 				process.env.OPFLOW_TEST_URI || 'amqp://localhost',
-		exchangeName: 'app-restfront-fibonacci',
-		routingKey: 'app-restfront-node-major',
-		operatorName: 'app-restfront-fibonacci-operator',
-		responseName: 'app-restfront-fibonacci-response',
-		applicationId: 'DevebotRestfront'
+		exchangeName: 'app-opmaster-example',
+		routingKey: 'app-opmaster-fibonacci',
+		responseName: 'app-opmaster-response',
+		operatorName: 'app-opmaster-operator',
+		applicationId: 'FibonacciExample'
 	});
 
 	worker.ready().then(worker.process);
