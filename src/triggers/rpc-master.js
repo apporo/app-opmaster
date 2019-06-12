@@ -8,17 +8,11 @@ const opflow = require('opflow');
 
 let Service = function(params) {
   params = params || {};
-  let self = this;
 
   let LX = params.loggingFactory.getLogger();
   let LT = params.loggingFactory.getTracer();
   let packageName = params.packageName || 'app-opmaster';
   let blockRef = chores.getBlockRef(__filename, packageName);
-
-  LX.has('silly') && LX.log('silly', LT.toMessage({
-    tags: [ blockRef, 'constructor-begin' ],
-    text: ' + constructor begin ...'
-  }));
 
   let pluginCfg = lodash.get(params, ['sandboxConfig'], {});
 
@@ -51,26 +45,21 @@ let Service = function(params) {
 
   init();
 
-  self.get = function(rpcName) {
+  this.get = function(rpcName) {
     return _rpcMasters[rpcName];
   }
 
-  self.start = function() {
+  this.start = function() {
     return Promise.mapSeries(lodash.values(_rpcMasters), function(rpc) {
       return rpc.ready();
     });
   };
 
-  self.stop = function() {
+  this.stop = function() {
     return Promise.mapSeries(lodash.values(_rpcMasters), function(rpc) {
       return rpc.close();
     });
   };
-
-  LX.has('silly') && LX.log('silly', LT.toMessage({
-    tags: [ blockRef, 'constructor-end' ],
-    text: ' - constructor end!'
-  }));
 };
 
 module.exports = Service;

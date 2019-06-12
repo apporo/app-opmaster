@@ -8,17 +8,11 @@ const valvekit = require('valvekit');
 
 let Service = function(params) {
   params = params || {};
-  let self = this;
 
   let LX = params.loggingFactory.getLogger();
   let LT = params.loggingFactory.getTracer();
   let packageName = params.packageName || 'app-opmaster';
   let blockRef = chores.getBlockRef(__filename, packageName);
-
-  LX.has('silly') && LX.log('silly', LT.toMessage({
-    tags: [ blockRef, 'constructor-begin' ],
-    text: ' + constructor begin ...'
-  }));
 
   let pluginCfg = lodash.get(params, ['sandboxConfig'], {});
   let mappings = pluginCfg.mappings || {};
@@ -29,7 +23,7 @@ let Service = function(params) {
     ticketDeliveryDelay = null;
   }
 
-  self.lookupService = function(serviceName) {
+  this.lookupService = function(serviceName) {
     return services[serviceName];
   }
 
@@ -217,11 +211,6 @@ let Service = function(params) {
   }
 
   init();
-
-  LX.has('silly') && LX.log('silly', LT.toMessage({
-    tags: [ blockRef, 'constructor-end' ],
-    text: ' - constructor end!'
-  }));
 };
 
 Service.referenceList = [ 'rpcMaster' ];
