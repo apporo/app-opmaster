@@ -12,11 +12,5 @@ module.exports = {
         colorize: true
       }
     }
-  },
-  newFeatures: {
-    application: {
-      logoliteEnabled: true,
-      sandboxConfig: true
-    }
   }
 };
