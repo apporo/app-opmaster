@@ -65,8 +65,7 @@ if (require.main === module) {
 	console.log('[+] FibonacciRpcWorker example');
 
 	var worker = new FibonacciRpcWorker({
-		uri: process.env.DEVEBOT_OPFLOW_URI ||
-				process.env.OPFLOW_TEST_URI || 'amqp://localhost',
+		uri: process.env.DEVEBOT_OPFLOW_URI || process.env.OPFLOW_TEST_URI || 'amqp://localhost',
 		exchangeName: 'app-opmaster-example',
 		routingKey: 'app-opmaster-fibonacci',
 		responseName: 'app-opmaster-response',

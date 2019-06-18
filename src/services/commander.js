@@ -6,9 +6,7 @@ const chores = Devebot.require('chores');
 const lodash = Devebot.require('lodash');
 const valvekit = require('valvekit');
 
-let Service = function(params) {
-  params = params || {};
-
+function Service(params = {}) {
   let LX = params.loggingFactory.getLogger();
   let LT = params.loggingFactory.getTracer();
   let packageName = params.packageName || 'app-opmaster';
