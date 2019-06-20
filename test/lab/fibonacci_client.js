@@ -7,7 +7,7 @@ app.server.start().then(function() {
   app.server.invoke(function(injektor) {
     var sandboxManager = injektor.lookup('sandboxManager');
     var invoker = sandboxManager.getSandboxService('application/invoker');
-    var total = 60000;
+    var total = 600;
     var cards = lodash.map(lodash.range(total), function(idx) {
       return lodash.padStart(idx, 8, '0');
     });
