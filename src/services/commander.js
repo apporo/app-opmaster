@@ -48,13 +48,13 @@ Service.referenceList = [ 'rpcMaster' ];
 
 module.exports = Service;
 
-let init = function(ctx, services, mappings, enabled) {
+function init(ctx, services, mappings, enabled) {
   const {LX, LT, blockRef} = ctx;
   LX.has('debug') && LX.log('debug', LT.add({ enabled }).toMessage({
     tags: [ blockRef, 'init-mappings' ],
     text: ' - Initialize the mappings, enabled: ${enabled}'
   }));
-  if (!enabled) return;
+  if (enabled === false) return;
   lodash.forOwn(mappings, function(serviceDescriptor, serviceName) {
     createService(ctx, services, serviceName, serviceDescriptor);
   });

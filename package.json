@@ -1,6 +1,6 @@
 {
   "name": "app-opmaster",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Devebot mapping opflow-master plugin",
   "homepage": "https://github.com/apporo/app-opmaster.git",
   "author": {
@@ -23,8 +23,8 @@
     "clean": "rm -rf ./lib",
     "prepublish": "npm run clean && NODE_ENV=production npm run build",
     "pretest": "npm run clean && NODE_ENV=test npm run build",
-    "test": "cucumber-js ./test/**/*.feature",
-    "verify": "npm run prepublish && cucumber-js ./test/**/*.feature"
+    "test": "mocha ./test/{bdd,tdd}/*test.js",
+    "verify": "npm run prepublish && mocha ./test/{bdd,tdd}/*test.js"
   },
   "keywords": [
     "devebot",
@@ -42,6 +42,6 @@
     "babel-cli": "^6.26.0",
     "babel-plugin-minify-mangle-names": "^0.3.0",
     "babel-preset-env": "^1.6.1",
-    "cucumber": "^4.0.0"
+    "mocha": "^4.1.0"
   }
 }
